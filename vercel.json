@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "https://eduai-frontend-tan.vercel.app",
+    "BACKEND_API_URL": "https://eduai-backend-three.vercel.app",
+    "BETTER_AUTH_URL": "https://eduai-frontend-tan.vercel.app"
+  }
+}
