@@ -20,8 +20,16 @@ const SESSION_DATA_COOKIES = [
   "__Secure-better-auth.session_data",
 ] as const;
 
+const SESSION_TOKEN_COOKIES = [
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+] as const;
+
 function hasAuthSession(request: NextRequest): boolean {
   if (getSessionCookie(request.headers)) return true;
+  if (SESSION_TOKEN_COOKIES.some((name) => !!request.cookies.get(name)?.value)) {
+    return true;
+  }
   return SESSION_DATA_COOKIES.some((name) => !!request.cookies.get(name)?.value);
 }
 

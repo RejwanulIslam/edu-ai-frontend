@@ -6,6 +6,7 @@
   "installCommand": "npm install",
   "env": {
     "NEXT_PUBLIC_APP_URL": "https://eduai-frontend-tan.vercel.app",
+    "NEXT_PUBLIC_API_URL": "https://eduai-backend-three.vercel.app",
     "BACKEND_API_URL": "https://eduai-backend-three.vercel.app",
     "BETTER_AUTH_URL": "https://eduai-frontend-tan.vercel.app"
   }

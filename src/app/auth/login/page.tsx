@@ -1,14 +1,14 @@
 "use client";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { signIn, useSession } from "@/lib/auth-client";
+import { signIn, getSession } from "@/lib/auth-client";
 import { authApi } from "@/lib/api";
-import { redirectByRole } from "@/lib/auth-utils";
+import { resolvePostLoginPath, type UserRole } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,13 +53,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
-  const { data: session } = useSession();
-
-  useEffect(() => {
-    if (session) {
-      handlePostLoginRedirect();
-    }
-  }, [session]);
+  const redirectingRef = useRef(false);
 
   const {
     register,
@@ -75,32 +69,28 @@ function LoginForm() {
    * This is the single place where post-login redirect happens.
    */
   const handlePostLoginRedirect = async () => {
-    // If middleware saved a ?next= destination, honour it first
-    if (nextPath) {
-      router.push(nextPath);
-      router.refresh();
+    if (redirectingRef.current) return;
+    redirectingRef.current = true;
+
+    const sessionResult = await getSession();
+    if (!sessionResult?.data?.user) {
+      redirectingRef.current = false;
+      toast.error("Sign-in did not complete. Check your connection and try again.");
       return;
     }
-    // Otherwise resolve role from DB and redirect to the matching dashboard
-    // try {
-      // const { data } = await authApi.getMe();
-      // const role =data?.data?.role ?? "STUDENT";
-      // console.log("role", data);
-      // console.log("role", role);
-      // redirectByRole(role, router);
-    // } catch {
-      // Fallback: if /me fails (e.g. race condition), use session-less default
-      // redirectByRole("STUDENT", router);
-    // }
+
+    let role: UserRole | string =
+      (sessionResult.data.user as { role?: string }).role ?? "STUDENT";
 
     try {
       const { data } = await authApi.getMe();
-      if (data?.data?.role) {
-        router.push("/")
-      }
-    } catch (error) {
-      
+      if (data?.data?.role) role = data.data.role;
+    } catch {
+      // Fall back to role from Better Auth session when /me is unavailable
     }
+
+    router.push(resolvePostLoginPath(role, nextPath));
+    router.refresh();
   };
 
   const onSubmit = async (data: FormData) => {

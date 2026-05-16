@@ -47,6 +47,15 @@ async function handleProxyRequest(request: NextRequest, proxyPathParams: string[
     headers.delete("host");
     headers.delete("connection");
 
+    const host = request.headers.get("host");
+    if (host) {
+      headers.set("x-forwarded-host", host);
+      headers.set(
+        "x-forwarded-proto",
+        request.nextUrl.protocol.replace(":", "") || "https"
+      );
+    }
+
     // Extract body if it's not a GET or HEAD request
     let body = null;
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -65,7 +74,17 @@ async function handleProxyRequest(request: NextRequest, proxyPathParams: string[
       redirect: "manual",
     });
 
-    // Create a new response with the backend's data
+    // 304 has no body — NextResponse rejects invalid status when body is present
+    if (response.status === 304) {
+      const notModified = new NextResponse(null, { status: 304 });
+      response.headers.forEach((value, key) => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey === "set-cookie" || lowerKey === "content-encoding") return;
+        notModified.headers.set(key, value);
+      });
+      return notModified;
+    }
+
     const responseBody = await response.text();
     const proxyResponse = new NextResponse(responseBody, {
       status: response.status,
@@ -88,7 +107,8 @@ async function handleProxyRequest(request: NextRequest, proxyPathParams: string[
     // Handle Set-Cookie correctly using getSetCookie() to avoid string concatenation
     const setCookies = response.headers.getSetCookie();
     for (const cookie of setCookies) {
-      const rewritten = cookie.replace(/;\s*domain=[^;]*/gi, "");
+      let rewritten = cookie.replace(/;\s*domain=[^;]*/gi, "");
+      rewritten = rewritten.replace(/;\s*samesite=none/gi, "; SameSite=Lax");
       proxyResponse.headers.append("Set-Cookie", rewritten);
     }
 

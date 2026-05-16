@@ -174,11 +174,15 @@ function CreateCourseModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const [descRes, classRes] = await Promise.all([
-        aiApi.generateDescription({ title, category, level, topics: [] }).then(r => r.data),
-        aiApi.classifyContent({ title, description: title }).then(r => r.data)
+      const [descResult, classResult] = await Promise.allSettled([
+        aiApi.generateDescription({ title, category, level, topics: [] }),
+        aiApi.classifyContent({ title, description: title || category }),
       ]);
-      return { desc: descRes.data, classification: classRes.data };
+      if (descResult.status === "rejected") throw descResult.reason;
+      const descRes = descResult.value.data;
+      const classRes =
+        classResult.status === "fulfilled" ? classResult.value.data : null;
+      return { desc: descRes.data, classification: classRes?.data ?? null };
     },
     onMutate: () => setStep("generating"),
     onSuccess: (data) => {

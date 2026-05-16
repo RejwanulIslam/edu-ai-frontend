@@ -33,3 +33,12 @@ export function redirectByRole(
   router.push(path);
   router.refresh();
 }
+
+/** Post-login destination: honour ?next= for dashboard routes, else role dashboard */
+export function resolvePostLoginPath(
+  role: UserRole | string | undefined,
+  nextPath: string | null
+): string {
+  if (nextPath?.startsWith("/dashboard")) return nextPath;
+  return getDashboardPath(role);
+}
